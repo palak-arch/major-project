@@ -132,15 +132,15 @@ class CarRacing:
 
     def display_credit(self):
         font = pygame.font.SysFont("lucidaconsole", 14)
-        text = font.render("Thanks To Anuj,", True, self.white)
+        text = font.render("      ", True, self.white)
         self.gameDisplay.blit(text, (600, 520))
-        text = font.render("for the", True, self.white)
+        text = font.render("      ", True, self.white)
         self.gameDisplay.blit(text, (600, 530))
-        text = font.render("source code", True, self.white)
+        text = font.render("      ", True, self.white)
         self.gameDisplay.blit(text, (600, 540))
-        text = font.render("Brought To You By", True, self.white)
+        text = font.render("      ", True, self.white)
         self.gameDisplay.blit(text, (600, 560))
-        text = font.render("code-projects.org", True, self.white)
+        text = font.render("      ", True, self.white)
         self.gameDisplay.blit(text, (600, 570))
 
 
