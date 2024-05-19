@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, simpledialog, colorchooser
 
 class NotepadApp:
     def __init__(self, root):
@@ -34,6 +34,8 @@ class NotepadApp:
 
         format_menu = tk.Menu(menubar, tearoff=0)
         format_menu.add_command(label="Font Size", command=self.change_font_size)
+        format_menu.add_command(label="Text Color", command=self.change_text_color)
+        format_menu.add_command(label="Text Font", command=self.change_text_font)
         menubar.add_cascade(label="Format", menu=format_menu)
 
         self.root.config(menu=menubar)
@@ -50,7 +52,13 @@ class NotepadApp:
                 self.text_area.insert(tk.END, content)
 
     def save_file(self):
-        pass  # Add save functionality
+        file_path = getattr(self, "file_path", None)
+        if file_path:
+            with open(file_path, "w") as file:
+                content = self.text_area.get(1.0, tk.END)
+                file.write(content)
+        else:
+            self.save_as_file()
 
     def save_as_file(self):
         file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
@@ -58,6 +66,7 @@ class NotepadApp:
             with open(file_path, "w") as file:
                 content = self.text_area.get(1.0, tk.END)
                 file.write(content)
+                self.file_path = file_path
 
     def cut_text(self):
         self.text_area.event_generate("<<Cut>>")
@@ -69,9 +78,30 @@ class NotepadApp:
         self.text_area.event_generate("<<Paste>>")
 
     def change_font_size(self):
-        font_size = tk.simpledialog.askinteger("Font Size", "Enter font size:", initialvalue=self.text_area["font"][1])
+        font_size = simpledialog.askinteger("Font Size", "Enter font size:", initialvalue=self.text_area["font"][1])
         if font_size:
             self.text_area.configure(font=("Helvetica", font_size))
+
+    def change_text_color(self):
+        color = colorchooser.askcolor()[1]
+        if color:
+            self.text_area.configure(fg=color)
+
+    def change_text_font(self):
+        font_info = self.text_area["font"]
+        font_info_parts = font_info.split()
+        font_name = font_info_parts[0]
+        font_size = font_info_parts[1] if len(font_info_parts) > 1 else "32"  # Default font size is 12
+        font_style = "" if len(font_info_parts) < 3 else font_info_parts[2]
+
+        font = simpledialog.askstring("Font", "Enter font name:", initialvalue=int(font_size))
+    
+        if font_size:
+            font_style = simpledialog.askstring("Font Style", "Enter font style (italic, bold,):", initialvalue=font_style)
+            if font_style:
+                font_tuple = (font, font_size, font_style)
+                self.text_area.configure(font=font_tuple)
+
 
 def main():
     root = tk.Tk()
@@ -80,3 +110,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
