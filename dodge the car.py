@@ -2,6 +2,7 @@ import random
 from time import sleep
 import pygame
 import sys
+import time
 
 class CarRacing:
     def __init__(self):
@@ -78,6 +79,11 @@ class CarRacing:
             self.car(self.car_x_coordinate, self.car_y_coordinate)
             self.update_score()
             self.display_score()
+
+            # Increase speed based on score
+            if self.score % 100 == 0 and self.score != 0:
+                self.enemy_car_speed += 0.5
+                self.bg_speed += 0.5
 
             if self.car_y_coordinate < self.enemy_car_starty + self.enemy_car_height:
                 if (self.car_x_coordinate > self.enemy_car_startx and 
