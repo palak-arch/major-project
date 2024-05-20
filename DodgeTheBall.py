@@ -1,14 +1,3 @@
-# -----------------------------------------------------------------------------
-#
-# Dodge The Ball!
-# Language - Python
-# Modules - pygame, sys, random, math
-#
-# Controls - Mouse Movement
-#
-#
-# -----------------------------------------------------------------------------
-
 import pygame
 import sys
 import random
@@ -35,6 +24,7 @@ orange = (214, 137, 16)
 colors = [red, yellow, blue, green, purple, orange]
 
 score = 0
+high_score = 0  # New variable to store high score
 
 
 class Ball:
@@ -53,8 +43,8 @@ class Ball:
         self.angle = random.randint(-180, 180)
     
     def move(self):
-        self.x += self.speed*cos(radians(self.angle))
-        self.y += self.speed*sin(radians(self.angle))
+        self.x += self.speed * cos(radians(self.angle))
+        self.y += self.speed * sin(radians(self.angle))
 
         if self.x < self.r or self.x + self.r > width:
             self.angle = 180 - self.angle
@@ -88,10 +78,52 @@ class Target:
 
         pygame.draw.rect(display, color, (self.x, self.y, self.w, self.h))
 
-    
-def gameOver():
-    loop = True
+class Button:
+    def __init__(self, x, y, w, h, text, color, hover_color, action=None):
+        self.rect = pygame.Rect(x, y, w, h)
+        self.text = text
+        self.color = color
+        self.hover_color = hover_color
+        self.action = action
 
+    def draw(self, display):
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_click = pygame.mouse.get_pressed()
+        
+        if self.rect.collidepoint(mouse_pos):
+            pygame.draw.rect(display, self.hover_color, self.rect)
+            if mouse_click[0] == 1 and self.action is not None:
+                self.action()
+        else:
+            pygame.draw.rect(display, self.color, self.rect)
+        
+        font = pygame.font.SysFont("Agency FB", 30)
+        text_surf = font.render(self.text, True, (230, 230, 230))
+        text_rect = text_surf.get_rect(center=self.rect.center)
+        display.blit(text_surf, text_rect)
+
+
+def readHighScore():
+    try:
+        with open("highscore.txt", "r") as file:
+            return int(file.read().strip())
+    except:
+        return 0
+
+def writeHighScore(high_score):
+    with open("highscore.txt", "w") as file:
+        file.write(str(high_score))
+
+
+def gameOver():
+    global high_score  # Reference the global high score variable
+    if score > high_score:
+        high_score = score  # Update high score if the current score is higher
+        writeHighScore(high_score)  # Save the new high score to the file
+    
+    new_game_button = Button(width//2 - 50, height//2 + 50, 100, 50, "New Game", (100, 100, 100), (150, 150, 150), gameLoop)
+    
+    loop = True
     font = pygame.font.SysFont("Agency FB", 100)
     text = font.render("Game Over!", True, (230, 230, 230))
     
@@ -106,9 +138,10 @@ def gameOver():
                     gameLoop()
 
         display.fill(background)
-
         display.blit(text, (20, height/2 - 100))
         displayScore()
+        
+        new_game_button.draw(display)
         
         pygame.display.update()
         clock.tick()
@@ -134,12 +167,17 @@ def close():
 def displayScore():
     font = pygame.font.SysFont("Forte", 30)
     scoreText = font.render("Score: " + str(score), True, (230, 230, 230))
+    highScoreText = font.render("High Score: " + str(high_score), True, (230, 230, 230))
     display.blit(scoreText, (10, 10))
+    display.blit(highScoreText, (10, 40))  # Display high score below the current score
 
 
 def gameLoop():
     global score
+    global high_score
+
     score = 0
+    high_score = readHighScore()  # Initialize the high score from the file
     
     loop = True
 
