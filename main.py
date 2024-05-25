@@ -1,64 +1,429 @@
-import pygame
-from datetime import datetime
-import math
+import sqlite3
+import tkinter as tk
+from tkinter import messagebox
+import re
+import customtkinter
+from PIL import Image, ImageTk, ImageSequence
+import tkinter.font as tkFont
 
-RES = WIDTH, HEIGHT = 1200, 800
-H_WIDTH, H_HEIGHT = WIDTH // 2, HEIGHT // 2
-RADIUS = H_HEIGHT - 50
-radius_list = {'sec': RADIUS - 10, 'min': RADIUS - 55, 'hour': RADIUS - 100, 'digit': RADIUS - 30}
-RADIUS_ARK = RADIUS + 8
+# Database functions
+def create_connection():
+    """Creates a connection to the SQLite database."""
+    conn = sqlite3.connect('users.db')
+    return conn
 
-pygame.init()
-surface = pygame.display.set_mode(RES)
-clock = pygame.time.Clock()
+def create_table():
+    """Creates the users table if it doesn't exist."""
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+                        id INTEGER PRIMARY KEY,
+                        username TEXT NOT NULL UNIQUE,
+                        password TEXT NOT NULL,
+                        email TEXT NOT NULL UNIQUE,
+                        security_question TEXT,
+                        security_answer TEXT)''')  # Modified to include security_question and security_answer
+    conn.commit()
+    conn.close()
 
-clock60 = dict(zip(range(60), range(0, 360, 6)))  # for hours, minutes and seconds
-
-font = pygame.font.SysFont('Verdana', 60)
-img = pygame.image.load('C:\\Users\pallak sharma\\OneDrive\\Desktop\\clock\\2.png').convert_alpha()
-bg = pygame.image.load('C:\\Users\pallak sharma\\OneDrive\\Desktop\\clock\\bg4.jpg').convert()
-bg_rect = bg.get_rect()
-bg_rect.center = WIDTH, HEIGHT
-dx, dy = 1, 1
-
-
-def get_clock_pos(clock_dict, clock_hand, key):
-    x = H_WIDTH + radius_list[key] * math.cos(math.radians(clock_dict[clock_hand]) - math.pi / 2)
-    y = H_HEIGHT + radius_list[key] * math.sin(math.radians(clock_dict[clock_hand]) - math.pi / 2)
-    return x, y
+create_table()
 
 
-while True:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            exit()
-    # set bg
-    dx *= -1 if bg_rect.left > 0 or bg_rect.right < WIDTH else 1
-    dy *= -1 if bg_rect.top > 0 or bg_rect.bottom < HEIGHT else 1
-    bg_rect.centerx += dx
-    bg_rect.centery += dy
-    surface.blit(bg, bg_rect)
-    surface.blit(img, (0, 0))
-    # get time now
-    t = datetime.now()
-    hour, minute, second = ((t.hour % 12) * 5 + t.minute // 12) % 60, t.minute, t.second
-    # draw face
-    for digit, pos in clock60.items():
-        radius = 20 if not digit % 3 and not digit % 5 else 8 if not digit % 5 else 2
-        pygame.draw.circle(surface, pygame.Color('gainsboro'), get_clock_pos(clock60, digit, 'digit'), radius, 7)
-    # draw clock
-    pygame.draw.line(surface, pygame.Color('orange'), (H_WIDTH, H_HEIGHT), get_clock_pos(clock60, hour, 'hour'), 15)
-    pygame.draw.line(surface, pygame.Color('green'), (H_WIDTH, H_HEIGHT), get_clock_pos(clock60, minute, 'min'), 7)
-    pygame.draw.line(surface, pygame.Color('magenta'), (H_WIDTH, H_HEIGHT), get_clock_pos(clock60, second, 'sec'), 4)
-    pygame.draw.circle(surface, pygame.Color('white'), (H_WIDTH, H_HEIGHT), 8)
-    # digital clock
-    time_render = font.render(f'{t:%H:%M:%S}', True, pygame.Color('forestgreen'), pygame.Color('orange'))
-    surface.blit(time_render, (0, 0))
-    # draw arc
-    sec_angle = -math.radians(clock60[t.second]) + math.pi / 2
-    pygame.draw.arc(surface, pygame.Color('magenta'),
-                    (H_WIDTH - RADIUS_ARK, H_HEIGHT - RADIUS_ARK, 2 * RADIUS_ARK, 2 * RADIUS_ARK),
-                    math.pi / 2, sec_angle, 8)
 
-    pygame.display.flip()
-    clock.tick(20)
+def display_users():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users")
+    rows = cursor.fetchall()
+
+    for row in rows:
+        print(row)
+
+    conn.close()
+display_users()# to view number of users
+
+
+
+
+def sign_up(username, password, email, security_question, security_answer):
+    """Registers a new user."""
+
+    conn = create_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
+    if cursor.fetchone():
+        messagebox.showerror("Error", "Username already exists.")
+        conn.close()
+        return
+
+    cursor.execute('SELECT * FROM users WHERE email = ?', (email,))
+    if cursor.fetchone():
+        messagebox.showerror("Error", "Email already exists.")
+        conn.close()
+        return
+
+    try:
+        cursor.execute('INSERT INTO users (username, password, email, security_question, security_answer) VALUES (?, ?, ?, ?, ?)', (username, password, email, security_question, security_answer))
+        conn.commit()
+        messagebox.showinfo("Success", "User registered successfully!")
+    except sqlite3.IntegrityError:
+        messagebox.showerror("Error", "Failed to register user.")
+    finally:
+        conn.close()
+
+def login(username, password):
+    """Logs in an existing user."""
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password))
+    user = cursor.fetchone()
+    conn.close()
+    if user:
+        return user[1]  # Return the username if login is successful
+    else:
+        messagebox.showerror("Error", "Invalid username or password.")
+        return None  # Return None if login fails
+
+def reset_password(email, security_question, security_answer, new_password):
+    """Resets the password for an existing user."""
+
+
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users WHERE email = ? AND security_question = ? AND security_answer = ?', (email, security_question, security_answer))
+    user = cursor.fetchone()
+    if user:
+        cursor.execute('UPDATE users SET password = ? WHERE email = ?', (new_password, email))
+        conn.commit()
+        messagebox.showinfo("Success", "Password updated successfully!")
+    else:
+        messagebox.showerror("Error", "Email, security question, or answer is incorrect.")
+    conn.close()
+
+# Custom tkinter setup
+customtkinter.set_appearance_mode("light")  # Modes: system (default), light, dark
+customtkinter.set_default_color_theme("green")  # Themes: blue (default), dark-blue, green
+
+# Functions to launch tools
+def launch_calculator():
+    import subprocess
+    subprocess.run(["python", "calu.py"])
+def launch_Deskassist():
+    import subprocess
+    subprocess.run(["python", "vertigoai.py"])
+
+
+def launch_paint():
+    import subprocess
+    subprocess.run(["python", "paint1.py"])
+
+def launch_notepad():
+    import subprocess
+    subprocess.run(["python", "note.py"])
+
+def launch_dodgethecar():
+    import subprocess
+    subprocess.run(["python", "dodge the car.py"])
+def launch_dodgetheball():
+    import subprocess
+    subprocess.run(["python", "DodgeTheBall.py"])
+def launch_Flappy():
+    import subprocess
+    subprocess.run(["python", "flappy.py"])
+
+# Main Application Class
+class UserManagementApp:
+
+    def __init__(self, root):
+        self.submit_sign_up = None
+        self.root = root
+        self.root.title("APPSPHERE")
+        self.root.geometry("1924x1080")
+
+        # Load the background image for the main menu
+        self.load_background_image("bg.jpg")
+
+        self.main_frame = tk.Frame(self.root, bg="black")
+        self.main_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER, width=800, height=600)
+        self.submit_sign_up = sign_up
+        self.submit_reset_password = reset_password
+        self.create_main_menu()
+
+    def load_background_image(self, image_path):
+        """Loads and sets the background image."""
+        background_image = Image.open(image_path)
+        background_photo = ImageTk.PhotoImage(background_image)
+        background_label = tk.Label(self.root, image=background_photo)
+        background_label.image = background_photo
+        background_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+    def create_main_menu(self):
+        """Creates the main menu."""
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+
+        # Load the GIF
+        gif_path = "APPSPHERE.gif"  # Replace with your GIF path
+        gif = Image.open(gif_path)
+        photo_sequence = [ImageTk.PhotoImage(frame) for frame in ImageSequence.Iterator(gif)]
+        gif_width, gif_height = gif.size
+
+        def update_gif(label, index):
+            label.configure(image=photo_sequence[index])
+            self.root.after(100, update_gif, label, (index + 1) % len(photo_sequence))
+
+        canvas_width = gif_width
+        canvas_height = gif_height
+
+        canvas = tk.Canvas(self.main_frame, width=canvas_width, height=canvas_height)
+        canvas.pack()
+
+        update_gif_label = tk.Label(canvas)
+        update_gif(update_gif_label, 0)
+        update_gif_label.pack()
+
+        buttons_frame = tk.Frame(self.root, bg="white")
+        buttons_frame.place(relx=0.5, rely=0.9, anchor=tk.CENTER)
+
+        button_font = tkFont.Font(family="Arial", size=12, weight="bold")
+
+        tk.Button(buttons_frame, text="Sign Up", width=20, height=2, font=button_font, command=self.show_sign_up,
+                  relief="raised").pack(side=tk.LEFT, padx=10, pady=10)
+        tk.Button(buttons_frame, text="Login", width=20, height=2, font=button_font, command=self.show_login,
+                  relief="raised").pack(side=tk.LEFT, padx=10, pady=10)
+        tk.Button(buttons_frame, text="Forgot Password", width=20, height=2, font=button_font,
+                  command=self.show_forgot_password, relief="raised").pack(side=tk.LEFT, padx=10, pady=10)
+        tk.Button(buttons_frame, text="Exit", width=20, height=2, font=button_font, command=self.root.quit,
+                  relief="raised").pack(side=tk.LEFT, padx=10, pady=10)
+
+    def show_sign_up(self):
+        """Opens the Sign Up window."""
+        self.new_window(self.sign_up_window, "Sign Up", "back.png")
+
+    def show_login(self):
+        """Opens the Login window."""
+        self.new_window(self.login_window, "Login", "back.png")
+
+    def show_forgot_password(self):
+        """Opens the Forgot Password window."""
+        self.new_window(self.forgot_password_window, "Forgot Password", "new.jpg")
+
+    def new_window(self, window_func, title, background_image):
+        """Creates a new window."""
+        new_window = tk.Toplevel(self.root)
+        new_window.title(title)
+        new_window.geometry("1928x1080")
+        self.load_window_background(new_window, background_image)
+        window_func(new_window)
+
+        # Store a reference to the current window
+        self.current_window = new_window
+
+    def load_window_background(self, window, image_path):
+        """Loads and sets the background image for a specific window."""
+        background_image = Image.open(image_path)
+        background_photo = ImageTk.PhotoImage(background_image)
+        background_label = tk.Label(window, image=background_photo)
+        background_label.image = background_photo
+        background_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+    def sign_up_window(self, window):
+        """Creates the Sign Up window."""
+        self.create_form(window, "    ", self.submit_sign_up, "SIGNUP1.gif")
+
+    def login_window(self, window):
+        """Creates the Login window."""
+        self.create_form(window, "     ", self.submit_login, "login.gif")
+
+    def forgot_password_window(self, window):
+        """Creates the Forgot Password window."""
+        self.create_form(window, "    ", self.submit_reset_password, "forget_password.gif")
+
+    def create_form(self, window, title, submit_command, gif_path, forget_password=False):
+        """Creates a form with a GIF and form fields."""
+        gif = Image.open(gif_path)
+        photo_sequence = [ImageTk.PhotoImage(frame) for frame in ImageSequence.Iterator(gif)]
+
+        def update_gif(label, index):
+            label.configure(image=photo_sequence[index])
+            window.after(100, update_gif, label, (index + 1) % len(photo_sequence))
+
+        canvas = tk.Canvas(window, width=800, height=500)
+        canvas.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
+        update_gif_label = tk.Label(canvas)
+        update_gif_label.pack(fill="both", expand=True)
+        update_gif(update_gif_label, 0)
+
+        form_frame = tk.Frame(canvas, bg="white")
+        form_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
+        tk.Label(form_frame, text=title, font=("Arial", 14), bg="white").pack(pady=10)
+
+        tk.Label(form_frame, text="Username:", bg="white", font=("Arial", 14)).pack(pady=5)
+        username_entry = tk.Entry(form_frame, width=20, font=("Arial", 14))
+        username_entry.pack(pady=5)
+
+        tk.Label(form_frame, text="Email:", bg="white", font=("Arial", 14)).pack(pady=5)
+        email_entry = tk.Entry(form_frame, width=20, font=("Arial", 14))
+        email_entry.pack(pady=5)
+
+
+
+        if forget_password:
+            tk.Label(form_frame, text="Security Question:", bg="white", font=("Arial", 14)).pack(pady=5)
+            security_question_entry = tk.Entry(form_frame, width=20, font=("Arial", 14))
+            security_question_entry.pack(pady=5)
+
+            tk.Label(form_frame, text="Security Answer:", bg="white", font=("Arial", 14)).pack(pady=5)
+            security_answer_entry = tk.Entry(form_frame, show='*', width=20, font=("Arial", 14))
+            security_answer_entry.pack(pady=5)
+
+        tk.Label(form_frame, text="Password:", bg="white", font=("Arial", 14)).pack(pady=5)
+        password_frame = tk.Frame(form_frame, bg="white")
+        password_frame.pack(pady=5)
+
+        new_password_entry = tk.Entry(password_frame, show='*', width=20, font=("Arial", 14))
+        new_password_entry.pack(side=tk.LEFT, padx=5)
+
+        eye_image_path = "eye_icon.png"  # Path to your eye icon image
+        eye_image = Image.open(eye_image_path)
+        eye_photo = ImageTk.PhotoImage(eye_image)
+
+        def toggle_password():
+            if show_password.get():
+                new_password_entry.config(show="")
+                eye_button.config(image=eye_photo)
+            else:
+                new_password_entry.config(show="*")
+                eye_button.config(image=eye_photo)
+
+            show_password.set(not show_password.get())
+
+        show_password = tk.BooleanVar(value=False)
+
+        eye_button = tk.Button(password_frame, image=eye_photo, command=toggle_password)
+        eye_button.pack(side=tk.LEFT, padx=5)  # Adjusted placement with padx
+        if sign_up:
+            tk.Label(form_frame, text="Security Question:", font="Arial", bg="white").pack(pady=5)
+            self.security_question_entry = tk.Entry(form_frame, font=("Arial", 12), width=30)
+            self.security_question_entry.pack(pady=5)
+
+            tk.Label(form_frame, text="Security Answer:", font="Arial", bg="white").pack(pady=5)
+            self.security_answer_entry = tk.Entry(form_frame, font=("Arial", 12), width=30)
+            self.security_answer_entry.pack(pady=5)
+            # Submit Button for Sign-up
+            tk.Button(form_frame, text="Submit", font="Arial", bg="lightgreen",
+                      command=lambda: submit_command(username_entry.get(), email_entry.get(),
+                                                     self.security_question_entry.get(),
+                                                     self.security_answer_entry.get(),
+                                                     new_password_entry.get())).pack(pady=20)
+        if forget_password:
+            tk.Button(form_frame, text="Submit", font="Arial", bg="lightgreen",
+                      command=lambda: submit_command(username_entry.get(), email_entry.get(),
+                                                     security_question_entry.get(), security_answer_entry.get(),
+                                                     new_password_entry.get())).pack(pady=20)
+
+
+
+            # Adjust alignment for better layout
+        username_entry.pack(fill="x", padx=15)
+        email_entry.pack(fill="x", padx=15)
+
+        if forget_password:
+            security_question_entry.pack(fill="x", padx=15)
+            security_answer_entry.pack(fill="x", padx=15)
+
+        return window
+
+    def submit_login(self, username, password):
+        """Handles the submission of the Login form."""
+        logged_in_user = login(username, password)
+        if logged_in_user:
+            self.open_welcome_window(logged_in_user)
+
+    def submit_reset_password(self, email, security_question, security_answer, new_password):
+        """Handles the submission of the Forgot Password form."""
+        reset_password(email, security_question, security_answer, new_password)
+
+    def open_welcome_window(self, username):
+        """Opens the welcome window with a GIF background and clickable screenshots."""
+        welcome_window = tk.Toplevel(self.root)
+        welcome_window.title("Welcome to AppSphere")
+        welcome_window.geometry("1900x1060")
+
+        # Load the GIF
+        gif_path = "mm.gif"  # Replace with the path to your GIF file
+        gif = Image.open(gif_path)
+        photo_sequence = [ImageTk.PhotoImage(frame) for frame in ImageSequence.Iterator(gif)]
+
+        def update_gif(label, index):
+            label.configure(image=photo_sequence[index])
+            welcome_window.after(100, update_gif, label, (index + 1) % len(photo_sequence))
+
+        # Create a label to display the GIF and place it in the background
+        gif_label = tk.Label(welcome_window)
+        gif_label.place(x=0, y=0, relwidth=1, relheight=1)
+        update_gif(gif_label, 0)
+
+        # Display the welcome message on top of the GIF
+        welcome_label = tk.Label(welcome_window, text=f"Welcome, {username}!", font=("Arial", 25), bg='white',
+                                 fg='black')
+        welcome_label.place(relx=0.5, y=50, anchor="center")
+
+        # Sample screenshots for tools
+        tools = {
+            "Calculator": "calculator.jpeg",
+            "Paint": "paint.jpg",
+            "Notepad": "notepad.png",
+            "Dodge The Car": "dodgethecar.jpeg",  # Replace with actual game screenshots
+            "Dodge The Ball": "dodge theball.jpeg",
+            "Flappy Bird": "flappy.jpeg",
+            "DeskAssist": "vertigo.png"
+        }
+
+        # Create a frame for centering the buttons
+        button_frame = tk.Frame(welcome_window, bg='white')
+        button_frame.place(relx=0.5, rely=0.5, anchor="center")
+
+        # Create and place buttons for each tool
+        for index, (tool, img_path) in enumerate(tools.items()):
+            img = Image.open(img_path)
+            img = img.resize((200, 200), Image.NEAREST)  # Resize the image
+            photo = ImageTk.PhotoImage(img)
+
+            # Create button and place it on top of the GIF
+            btn = tk.Button(button_frame, image=photo, text=tool, compound="top",
+                            command=lambda t=tool: self.launch_tool(t))
+            btn.image = photo
+
+            # Use grid to place buttons in a grid layout
+            btn.grid(row=index // 3, column=index % 3, padx=10, pady=10)
+
+
+    def launch_tool(self, tool_name):
+        """Launches the corresponding tool based on the button clicked."""
+        if tool_name == "Calculator":
+            launch_calculator()
+        elif tool_name == "Paint":
+            launch_paint()
+        elif tool_name == "Notepad":
+            launch_notepad()
+        elif tool_name == "Dodge The Ball":
+            launch_dodgetheball()
+        elif tool_name == "Dodge The Car":
+            launch_dodgethecar()
+        elif tool_name == "Flappy Bird":
+            launch_Flappy()
+        elif tool_name == "DeskAssist":
+            launch_Deskassist()
+
+
+if __name__ == '__main__':
+    root = customtkinter.CTk()
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    root.geometry(f"{screen_width}x{screen_height}+0+0")  # Set the window size to fill the screen
+    app = UserManagementApp(root)
+    root.mainloop()
