@@ -22,13 +22,11 @@ def create_table():
                         password TEXT NOT NULL,
                         email TEXT NOT NULL UNIQUE,
                         security_question TEXT,
-                        security_answer TEXT)''')  # Modified to include security_question and security_answer
+                        security_answer TEXT)''')
     conn.commit()
     conn.close()
 
 create_table()
-
-
 
 def display_users():
     conn = sqlite3.connect('users.db')
@@ -40,14 +38,10 @@ def display_users():
         print(row)
 
     conn.close()
-display_users()# to view number of users
-
-
-
+display_users()
 
 def sign_up(username, password, email, security_question, security_answer):
     """Registers a new user."""
-
     conn = create_connection()
     cursor = conn.cursor()
 
@@ -64,7 +58,8 @@ def sign_up(username, password, email, security_question, security_answer):
         return
 
     try:
-        cursor.execute('INSERT INTO users (username, password, email, security_question, security_answer) VALUES (?, ?, ?, ?, ?)', (username, password, email, security_question, security_answer))
+        cursor.execute('INSERT INTO users (username, password, email, security_question, security_answer) VALUES (?, ?, ?, ?, ?)',
+                       (username, password, email, security_question, security_answer))
         conn.commit()
         messagebox.showinfo("Success", "User registered successfully!")
     except sqlite3.IntegrityError:
@@ -78,20 +73,16 @@ def login(username, password):
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password))
     user = cursor.fetchone()
+    print(user)  # Add this line to see the user information retrieved
     conn.close()
-    if user:
-        return user[1]  # Return the username if login is successful
-    else:
-        messagebox.showerror("Error", "Invalid username or password.")
-        return None  # Return None if login fails
+    return user is not None
 
 def reset_password(email, security_question, security_answer, new_password):
     """Resets the password for an existing user."""
-
-
     conn = create_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM users WHERE email = ? AND security_question = ? AND security_answer = ?', (email, security_question, security_answer))
+    cursor.execute('SELECT * FROM users WHERE email = ? AND security_question = ? AND security_answer = ?',
+                   (email, security_question, security_answer))
     user = cursor.fetchone()
     if user:
         cursor.execute('UPDATE users SET password = ? WHERE email = ?', (new_password, email))
@@ -102,17 +93,17 @@ def reset_password(email, security_question, security_answer, new_password):
     conn.close()
 
 # Custom tkinter setup
-customtkinter.set_appearance_mode("light")  # Modes: system (default), light, dark
-customtkinter.set_default_color_theme("green")  # Themes: blue (default), dark-blue, green
+customtkinter.set_appearance_mode("light")
+customtkinter.set_default_color_theme("green")
 
 # Functions to launch tools
 def launch_calculator():
     import subprocess
     subprocess.run(["python", "calu.py"])
+
 def launch_Deskassist():
     import subprocess
     subprocess.run(["python", "vertigoai.py"])
-
 
 def launch_paint():
     import subprocess
@@ -125,9 +116,11 @@ def launch_notepad():
 def launch_dodgethecar():
     import subprocess
     subprocess.run(["python", "dodge the car.py"])
+
 def launch_dodgetheball():
     import subprocess
     subprocess.run(["python", "DodgeTheBall.py"])
+
 def launch_Flappy():
     import subprocess
     subprocess.run(["python", "flappy.py"])
@@ -141,7 +134,6 @@ class UserManagementApp:
         self.root.title("APPSPHERE")
         self.root.geometry("1924x1080")
 
-        # Load the background image for the main menu
         self.load_background_image("bg.jpg")
 
         self.main_frame = tk.Frame(self.root, bg="black")
@@ -163,8 +155,7 @@ class UserManagementApp:
         for widget in self.main_frame.winfo_children():
             widget.destroy()
 
-        # Load the GIF
-        gif_path = "APPSPHERE.gif"  # Replace with your GIF path
+        gif_path = "APPSPHERE.gif"
         gif = Image.open(gif_path)
         photo_sequence = [ImageTk.PhotoImage(frame) for frame in ImageSequence.Iterator(gif)]
         gif_width, gif_height = gif.size
@@ -217,7 +208,6 @@ class UserManagementApp:
         self.load_window_background(new_window, background_image)
         window_func(new_window)
 
-        # Store a reference to the current window
         self.current_window = new_window
 
     def load_window_background(self, window, image_path):
@@ -230,17 +220,29 @@ class UserManagementApp:
 
     def sign_up_window(self, window):
         """Creates the Sign Up window."""
-        self.create_form(window, "    ", self.submit_sign_up, "SIGNUP1.gif")
+        self.create_sign_up_form(window, "Sign Up", self.submit_sign_up, "SIGNUP1.gif")
 
     def login_window(self, window):
         """Creates the Login window."""
-        self.create_form(window, "     ", self.submit_login, "login.gif")
+        self.create_login_form(window, "Login", self.submit_login, "login.gif")
 
     def forgot_password_window(self, window):
         """Creates the Forgot Password window."""
-        self.create_form(window, "    ", self.submit_reset_password, "forget_password.gif")
+        self.create_forgot_password_form(window, "Forgot Password", self.submit_reset_password, "forget_password.gif")
 
-    def create_form(self, window, title, submit_command, gif_path, forget_password=False):
+    def create_sign_up_form(self, window, title, submit_command, gif_path):
+        """Creates the Sign Up form with a GIF and form fields."""
+        self.create_form(window, title, submit_command, gif_path, sign_up=True)
+
+    def create_login_form(self, window, title, submit_command, gif_path):
+        """Creates the Login form with a GIF and form fields."""
+        self.create_form(window, title, submit_command, gif_path, login=True)
+
+    def create_forgot_password_form(self, window, title, submit_command, gif_path):
+        """Creates the Forgot Password form with a GIF and form fields."""
+        self.create_form(window, title, submit_command, gif_path, forgot_password=True)
+
+    def create_form(self, window, title, submit_command, gif_path, sign_up=False, login=False, forgot_password=False):
         """Creates a form with a GIF and form fields."""
         gif = Image.open(gif_path)
         photo_sequence = [ImageTk.PhotoImage(frame) for frame in ImageSequence.Iterator(gif)]
@@ -265,38 +267,36 @@ class UserManagementApp:
         username_entry = tk.Entry(form_frame, width=20, font=("Arial", 14))
         username_entry.pack(pady=5)
 
-        tk.Label(form_frame, text="Email:", bg="white", font=("Arial", 14)).pack(pady=5)
-        email_entry = tk.Entry(form_frame, width=20, font=("Arial", 14))
-        email_entry.pack(pady=5)
+        if sign_up:
+            tk.Label(form_frame, text="Email:", bg="white", font=("Arial", 14)).pack(pady=5)
+            email_entry = tk.Entry(form_frame, width=20, font=("Arial", 14))
+            email_entry.pack(pady=5)
 
-
-
-        if forget_password:
             tk.Label(form_frame, text="Security Question:", bg="white", font=("Arial", 14)).pack(pady=5)
             security_question_entry = tk.Entry(form_frame, width=20, font=("Arial", 14))
             security_question_entry.pack(pady=5)
 
             tk.Label(form_frame, text="Security Answer:", bg="white", font=("Arial", 14)).pack(pady=5)
-            security_answer_entry = tk.Entry(form_frame, show='*', width=20, font=("Arial", 14))
+            security_answer_entry = tk.Entry(form_frame, width=20, font=("Arial", 14))
             security_answer_entry.pack(pady=5)
 
         tk.Label(form_frame, text="Password:", bg="white", font=("Arial", 14)).pack(pady=5)
         password_frame = tk.Frame(form_frame, bg="white")
         password_frame.pack(pady=5)
 
-        new_password_entry = tk.Entry(password_frame, show='*', width=20, font=("Arial", 14))
-        new_password_entry.pack(side=tk.LEFT, padx=5)
+        password_entry = tk.Entry(password_frame, show='*', width=20, font=("Arial", 14))
+        password_entry.pack(side=tk.LEFT, padx=5)
 
-        eye_image_path = "eye_icon.png"  # Path to your eye icon image
+        eye_image_path = "eye_icon.png"
         eye_image = Image.open(eye_image_path)
         eye_photo = ImageTk.PhotoImage(eye_image)
 
         def toggle_password():
             if show_password.get():
-                new_password_entry.config(show="")
+                password_entry.config(show="")
                 eye_button.config(image=eye_photo)
             else:
-                new_password_entry.config(show="*")
+                password_entry.config(show="*")
                 eye_button.config(image=eye_photo)
 
             show_password.set(not show_password.get())
@@ -304,54 +304,51 @@ class UserManagementApp:
         show_password = tk.BooleanVar(value=False)
 
         eye_button = tk.Button(password_frame, image=eye_photo, command=toggle_password)
-        eye_button.pack(side=tk.LEFT, padx=5)  # Adjusted placement with padx
+        eye_button.pack(side=tk.LEFT, padx=5)
+
         if sign_up:
-            tk.Label(form_frame, text="Security Question:", font="Arial", bg="white").pack(pady=5)
-            self.security_question_entry = tk.Entry(form_frame, font=("Arial", 12), width=30)
-            self.security_question_entry.pack(pady=5)
-
-            tk.Label(form_frame, text="Security Answer:", font="Arial", bg="white").pack(pady=5)
-            self.security_answer_entry = tk.Entry(form_frame, font=("Arial", 12), width=30)
-            self.security_answer_entry.pack(pady=5)
-            # Submit Button for Sign-up
             tk.Button(form_frame, text="Submit", font="Arial", bg="lightgreen",
-                      command=lambda: submit_command(username_entry.get(), email_entry.get(),
-                                                     self.security_question_entry.get(),
-                                                     self.security_answer_entry.get(),
-                                                     new_password_entry.get())).pack(pady=20)
-        if forget_password:
+                      command=lambda: submit_command(username_entry.get(), password_entry.get(), email_entry.get(),
+                                                     security_question_entry.get(), security_answer_entry.get())).pack(pady=20)
+
+        if login:
             tk.Button(form_frame, text="Submit", font="Arial", bg="lightgreen",
-                      command=lambda: submit_command(username_entry.get(), email_entry.get(),
-                                                     security_question_entry.get(), security_answer_entry.get(),
-                                                     new_password_entry.get())).pack(pady=20)
+                      command=lambda: submit_command(username_entry.get(), password_entry.get())).pack(pady=20)
 
+        if forgot_password:
+            tk.Label(form_frame, text="Email:", bg="white", font=("Arial", 14)).pack(pady=5)
+            email_entry = tk.Entry(form_frame, width=20, font=("Arial", 14))
+            email_entry.pack(pady=5)
 
+            tk.Label(form_frame, text="Security Question:", bg="white", font=("Arial", 14)).pack(pady=5)
+            security_question_entry = tk.Entry(form_frame, width=20, font=("Arial", 14))
+            security_question_entry.pack(pady=5)
 
-            # Adjust alignment for better layout
-        username_entry.pack(fill="x", padx=15)
-        email_entry.pack(fill="x", padx=15)
+            tk.Label(form_frame, text="Security Answer:", bg="white", font=("Arial", 14)).pack(pady=5)
+            security_answer_entry = tk.Entry(form_frame, width=20, font=("Arial", 14))
+            security_answer_entry.pack(pady=5)
 
-        if forget_password:
-            security_question_entry.pack(fill="x", padx=15)
-            security_answer_entry.pack(fill="x", padx=15)
+            tk.Button(form_frame, text="Submit", font="Arial", bg="lightgreen",
+                      command=lambda: submit_command(email_entry.get(), security_question_entry.get(),
+                                                     security_answer_entry.get(), password_entry.get())).pack(pady=20)
 
         return window
 
     def submit_login(self, username, password):
         """Handles the submission of the Login form."""
-        logged_in_user = login(username, password)
-        if logged_in_user:
-            self.open_welcome_window(logged_in_user)
+        if login(username, password):
+            self.open_welcome_window(username)
+        else:
+            messagebox.showerror("Error", "Invalid username or password.")
 
     def submit_reset_password(self, email, security_question, security_answer, new_password):
         """Handles the submission of the Forgot Password form."""
         reset_password(email, security_question, security_answer, new_password)
-
     def open_welcome_window(self, username):
         """Opens the welcome window with a GIF background and clickable screenshots."""
         welcome_window = tk.Toplevel(self.root)
         welcome_window.title("Welcome to AppSphere")
-        welcome_window.geometry("1900x1060")
+        welcome_window.geometry("1800x1000")
 
         # Load the GIF
         gif_path = "mm.gif"  # Replace with the path to your GIF file
