@@ -190,15 +190,15 @@ class UserManagementApp:
 
     def show_sign_up(self):
         """Opens the Sign Up window."""
-        self.new_window(self.sign_up_window, "Sign Up", "back.png")
+        self.new_window(self.sign_up_window, "  ", "back.png")
 
     def show_login(self):
         """Opens the Login window."""
-        self.new_window(self.login_window, "Login", "back.png")
+        self.new_window(self.login_window, "   ", "back.png")
 
     def show_forgot_password(self):
         """Opens the Forgot Password window."""
-        self.new_window(self.forgot_password_window, "Forgot Password", "new.jpg")
+        self.new_window(self.forgot_password_window, "      ", "new.jpg")
 
     def new_window(self, window_func, title, background_image):
         """Creates a new window."""
