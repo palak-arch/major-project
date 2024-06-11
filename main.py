@@ -5,7 +5,7 @@ import re
 import customtkinter
 from PIL import Image, ImageTk, ImageSequence
 import tkinter.font as tkFont
-
+import importlib.util
 # Database functions
 def create_connection():
     """Creates a connection to the SQLite database."""
@@ -14,6 +14,7 @@ def create_connection():
 
 def create_table():
     """Creates the users table if it doesn't exist."""
+
     conn = sqlite3.connect('users.db')
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS users (
@@ -38,25 +39,48 @@ def display_users():
         print(row)
 
     conn.close()
-display_users()
+#display_users()
+
+def update_schema(conn):
+    """Update the users table schema to add missing columns if necessary."""
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(users)")
+    columns = [column[1] for column in cursor.fetchall()]
+
+    if 'security_question' not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN security_question TEXT")
+    if 'security_answer' not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN security_answer TEXT")
+
+    conn.commit()
 
 def sign_up(username, password, email, security_question, security_answer):
     """Registers a new user."""
     conn = create_connection()
+    if not conn:
+        messagebox.showerror("Error", "Failed to connect to the database.")
+        return
+
     cursor = conn.cursor()
 
+    # Ensure the schema is up-to-date
+    update_schema(conn)
+
+    # Check if the username already exists
     cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
     if cursor.fetchone():
         messagebox.showerror("Error", "Username already exists.")
         conn.close()
         return
 
+    # Check if the email already exists
     cursor.execute('SELECT * FROM users WHERE email = ?', (email,))
     if cursor.fetchone():
         messagebox.showerror("Error", "Email already exists.")
         conn.close()
         return
 
+    # Insert the new user into the table
     try:
         cursor.execute('INSERT INTO users (username, password, email, security_question, security_answer) VALUES (?, ?, ?, ?, ?)',
                        (username, password, email, security_question, security_answer))
@@ -66,7 +90,6 @@ def sign_up(username, password, email, security_question, security_answer):
         messagebox.showerror("Error", "Failed to register user.")
     finally:
         conn.close()
-
 def login(username, password):
     """Logs in an existing user."""
     conn = create_connection()
@@ -96,34 +119,6 @@ def reset_password(email, security_question, security_answer, new_password):
 customtkinter.set_appearance_mode("light")
 customtkinter.set_default_color_theme("green")
 
-# Functions to launch tools
-def launch_calculator():
-    import subprocess
-    subprocess.run(["python", "calu.py"])
-
-def launch_Deskassist():
-    import subprocess
-    subprocess.run(["python", "vertigoai.py"])
-
-def launch_paint():
-    import subprocess
-    subprocess.run(["python", "paint1.py"])
-
-def launch_notepad():
-    import subprocess
-    subprocess.run(["python", "note.py"])
-
-def launch_dodgethecar():
-    import subprocess
-    subprocess.run(["python", "dodge the car.py"])
-
-def launch_dodgetheball():
-    import subprocess
-    subprocess.run(["python", "DodgeTheBall.py"])
-
-def launch_Flappy():
-    import subprocess
-    subprocess.run(["python", "flappy.py"])
 
 # Main Application Class
 class UserManagementApp:
@@ -188,17 +183,66 @@ class UserManagementApp:
         tk.Button(buttons_frame, text="Exit", width=20, height=2, font=button_font, command=self.root.quit,
                   relief="raised").pack(side=tk.LEFT, padx=10, pady=10)
 
+    # Functions to launch tools
+    def launch_calculator(self):
+        import subprocess
+        subprocess.run(["python", "calu.py"])
+
+    def launch_paint(self):
+        import subprocess
+        subprocess.run(["python", "paint1.py"])
+
+    def launch_notepad(self):
+        import subprocess
+        subprocess.run(["python", "note.py"])
+
+    def launch_dodgethecar(self):
+        import subprocess
+        subprocess.run(["python", "dodge the car.py"])
+
+    def launch_dodgetheball(self):
+        import subprocess
+        subprocess.run(["python", "DodgeTheBall.py"])
+
+    def launch_Flappy(self):
+        import subprocess
+        subprocess.run(["python", "flappy.py"])
+
+    def launch_chatbot(self):
+        try:
+            import manual_input_file
+            with open("manual_input_file.py", "r") as file:
+                script_content = file.read()
+            exec(script_content)
+        except Exception as e:
+            print(f"Error: {e}")
+    def launch_Textpad(self):
+        module_name = "Textpad"
+        module_path = "Textpad.py"
+
+        spec = importlib.util.spec_from_file_location(module_name, module_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+    def launch_Deskassist(self):
+        try:
+            import mainvertigo
+            with open("mainvertigo.py", "r") as file:
+                script_content = file.read()
+            exec(script_content)
+        except Exception as e:
+            print(f"Error: {e}")
     def show_sign_up(self):
         """Opens the Sign Up window."""
-        self.new_window(self.sign_up_window, "  ", "back.png")
+        self.new_window(self.sign_up_window, "signup", "back.png")
 
     def show_login(self):
         """Opens the Login window."""
-        self.new_window(self.login_window, "   ", "back.png")
+        self.new_window(self.login_window, "login", "back.png")
 
     def show_forgot_password(self):
         """Opens the Forgot Password window."""
-        self.new_window(self.forgot_password_window, "      ", "new.jpg")
+        self.new_window(self.forgot_password_window, "Forgetpassword", "new.jpg")
 
     def new_window(self, window_func, title, background_image):
         """Creates a new window."""
@@ -220,15 +264,15 @@ class UserManagementApp:
 
     def sign_up_window(self, window):
         """Creates the Sign Up window."""
-        self.create_sign_up_form(window, "Sign Up", self.submit_sign_up, "SIGNUP1.gif")
+        self.create_sign_up_form(window, "      ", self.submit_sign_up, "signup1.gif")
 
     def login_window(self, window):
         """Creates the Login window."""
-        self.create_login_form(window, "Login", self.submit_login, "login.gif")
+        self.create_login_form(window, "   ", self.submit_login, "login.gif")
 
     def forgot_password_window(self, window):
         """Creates the Forgot Password window."""
-        self.create_forgot_password_form(window, "Forgot Password", self.submit_reset_password, "forget_password.gif")
+        self.create_forgot_password_form(window, "      ", self.submit_reset_password, "forget_password.gif")
 
     def create_sign_up_form(self, window, title, submit_command, gif_path):
         """Creates the Sign Up form with a GIF and form fields."""
@@ -284,7 +328,7 @@ class UserManagementApp:
         password_frame = tk.Frame(form_frame, bg="white")
         password_frame.pack(pady=5)
 
-        password_entry = tk.Entry(password_frame, show='*', width=20, font=("Arial", 14))
+        password_entry = tk.Entry(password_frame, show='*', width=10, font=("Arial", 14))
         password_entry.pack(side=tk.LEFT, padx=5)
 
         eye_image_path = "eye_icon.png"
@@ -377,7 +421,9 @@ class UserManagementApp:
             "Dodge The Car": "dodgethecar.jpeg",  # Replace with actual game screenshots
             "Dodge The Ball": "dodge theball.jpeg",
             "Flappy Bird": "flappy.jpeg",
-            "DeskAssist": "vertigo.png"
+
+            "chatbot":"chatbot.png"
+
         }
 
         # Create a frame for centering the buttons
@@ -398,23 +444,26 @@ class UserManagementApp:
             # Use grid to place buttons in a grid layout
             btn.grid(row=index // 3, column=index % 3, padx=10, pady=10)
 
-
     def launch_tool(self, tool_name):
         """Launches the corresponding tool based on the button clicked."""
-        if tool_name == "Calculator":
-            launch_calculator()
-        elif tool_name == "Paint":
-            launch_paint()
-        elif tool_name == "Notepad":
-            launch_notepad()
-        elif tool_name == "Dodge The Ball":
-            launch_dodgetheball()
-        elif tool_name == "Dodge The Car":
-            launch_dodgethecar()
-        elif tool_name == "Flappy Bird":
-            launch_Flappy()
-        elif tool_name == "DeskAssist":
-            launch_Deskassist()
+        try:
+            if tool_name == "Calculator":
+                self.launch_calculator()
+            elif tool_name == "Paint":
+                self.launch_paint()
+            elif tool_name == "Notepad":
+                self.launch_notepad()
+            elif tool_name == "Dodge The Ball":
+                self.launch_dodgetheball()
+            elif tool_name == "Dodge The Car":
+                self.launch_dodgethecar()
+            elif tool_name == "Flappy Bird":
+                self.launch_Flappy()
+
+            elif tool_name == "chatbot":
+                self.launch_chatbot()
+        except Exception as e:
+            print(f"Failed to launch {tool_name}: {e}")
 
 
 if __name__ == '__main__':
